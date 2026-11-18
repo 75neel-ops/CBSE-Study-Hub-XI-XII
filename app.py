@@ -1,4 +1,3 @@
-import copy
 import json
 import random
 import re
@@ -6,378 +5,293 @@ import time
 import uuid
 
 import streamlit as st
+from openai import OpenAI
+from PIL import Image, ImageDraw
 
+
+# Create a custom icon image for the browser tab and app header.
+def make_app_icon():
+    image = Image.new("RGB", (256, 256), "#12345A")
+    draw = ImageDraw.Draw(image)
+
+    # Book pages
+    draw.polygon([(49, 72), (122, 90), (122, 190), (49, 171)], fill="#FFFFFF")
+    draw.polygon([(134, 90), (207, 72), (207, 171), (134, 190)], fill="#EAF2F8")
+
+    # Book outline and centre
+    draw.line([(122, 90), (122, 190)], fill="#12345A", width=7)
+    draw.line([(49, 72), (122, 90), (122, 190), (49, 171), (49, 72)],
+              fill="#F4B942", width=7)
+    draw.line([(134, 90), (207, 72), (207, 171), (134, 190), (134, 90)],
+              fill="#F4B942", width=7)
+
+    # Short text lines on the pages
+    for y in (112, 133, 154):
+        draw.line([(65, y), (108, y + 5)], fill="#8AA2B8", width=4)
+        draw.line([(147, y + 5), (190, y)], fill="#8AA2B8", width=4)
+
+    # Small golden accent
+    draw.ellipse((184, 35, 220, 71), fill="#F4B942")
+    return image
+
+
+APP_ICON = make_app_icon()
 
 st.set_page_config(
     page_title="CBSE Study Hub",
-    page_icon="📘",
+    page_icon=APP_ICON,
     layout="centered",
 )
 
 
-# Check the latest CBSE syllabus before treating this chapter list as definitive.
-CHAPTERS = {
-    "Class XI": [
-        "Sets",
-        "Relations and Functions",
-        "Trigonometric Functions",
-        "Complex Numbers and Quadratic Equations",
-        "Linear Inequalities",
-        "Permutations and Combinations",
-        "Binomial Theorem",
-        "Sequence and Series",
-        "Straight Lines",
-        "Conic Sections",
-        "Introduction to 3D Geometry",
-        "Limits and Derivatives",
-        "Statistics",
-        "Probability",
-    ],
-    "Class XII": [
-        "Relations and Functions",
-        "Inverse Trigonometric Functions",
-        "Matrices",
-        "Determinants",
-        "Continuity and Differentiability",
-        "Application of Derivatives",
-        "Integrals",
-        "Application of Integrals",
-        "Differential Equations",
-        "Vector Algebra",
-        "Three Dimensional Geometry",
-        "Linear Programming",
-        "Probability",
-    ],
+# Check the current CBSE syllabus before treating this chapter list as definitive.
+SUBJECT_CHAPTERS = {
+    "Mathematics": {
+        "Class XI": [
+            "Sets",
+            "Relations and Functions",
+            "Trigonometric Functions",
+            "Complex Numbers and Quadratic Equations",
+            "Linear Inequalities",
+            "Permutations and Combinations",
+            "Binomial Theorem",
+            "Sequence and Series",
+            "Straight Lines",
+            "Conic Sections",
+            "Introduction to 3D Geometry",
+            "Limits and Derivatives",
+            "Statistics",
+            "Probability",
+        ],
+        "Class XII": [
+            "Relations and Functions",
+            "Inverse Trigonometric Functions",
+            "Matrices",
+            "Determinants",
+            "Continuity and Differentiability",
+            "Application of Derivatives",
+            "Integrals",
+            "Application of Integrals",
+            "Differential Equations",
+            "Vector Algebra",
+            "Three Dimensional Geometry",
+            "Linear Programming",
+            "Probability",
+        ],
+    },
+    "Biology": {
+        "Class XI": [
+            "The Living World",
+            "Biological Classification",
+            "Plant Kingdom",
+            "Animal Kingdom",
+            "Morphology of Flowering Plants",
+            "Anatomy of Flowering Plants",
+            "Structural Organisation in Animals",
+            "Cell: The Unit of Life",
+            "Biomolecules",
+            "Cell Cycle and Cell Division",
+            "Photosynthesis in Higher Plants",
+            "Respiration in Plants",
+            "Plant Growth and Development",
+            "Breathing and Exchange of Gases",
+            "Body Fluids and Circulation",
+            "Excretory Products and Their Elimination",
+            "Locomotion and Movement",
+            "Neural Control and Coordination",
+            "Chemical Coordination and Integration",
+        ],
+        "Class XII": [
+            "Sexual Reproduction in Flowering Plants",
+            "Human Reproduction",
+            "Reproductive Health",
+            "Principles of Inheritance and Variation",
+            "Molecular Basis of Inheritance",
+            "Evolution",
+            "Human Health and Disease",
+            "Microbes in Human Welfare",
+            "Biotechnology: Principles and Processes",
+            "Biotechnology and Its Applications",
+            "Organisms and Populations",
+            "Ecosystem",
+            "Biodiversity and Conservation",
+        ],
+    },
+    "Chemistry": {
+        "Class XI": [
+            "Some Basic Concepts of Chemistry",
+            "Structure of Atom",
+            "Classification of Elements and Periodicity in Properties",
+            "Chemical Bonding and Molecular Structure",
+            "Chemical Thermodynamics",
+            "Equilibrium",
+            "Redox Reactions",
+            "Organic Chemistry: Some Basic Principles and Techniques",
+            "Hydrocarbons",
+        ],
+        "Class XII": [
+            "Solutions",
+            "Electrochemistry",
+            "Chemical Kinetics",
+            "The d- and f-Block Elements",
+            "Coordination Compounds",
+            "Haloalkanes and Haloarenes",
+            "Alcohols, Phenols and Ethers",
+            "Aldehydes, Ketones and Carboxylic Acids",
+            "Amines",
+            "Biomolecules",
+        ],
+    },
+    "Physics": {
+        "Class XI": [
+            "Units and Measurements",
+            "Motion in a Straight Line",
+            "Motion in a Plane",
+            "Laws of Motion",
+            "Work, Energy and Power",
+            "System of Particles and Rotational Motion",
+            "Gravitation",
+            "Mechanical Properties of Solids",
+            "Mechanical Properties of Fluids",
+            "Thermal Properties of Matter",
+            "Thermodynamics",
+            "Kinetic Theory",
+            "Oscillations",
+            "Waves",
+        ],
+        "Class XII": [
+            "Electric Charges and Fields",
+            "Electrostatic Potential and Capacitance",
+            "Current Electricity",
+            "Moving Charges and Magnetism",
+            "Magnetism and Matter",
+            "Electromagnetic Induction",
+            "Alternating Current",
+            "Electromagnetic Waves",
+            "Ray Optics",
+            "Wave Optics",
+            "Dual Nature of Radiation and Matter",
+            "Atoms",
+            "Nuclei",
+            "Semiconductor Electronics",
+        ],
+    },
 }
-
-
-# Original starter questions for Mathematics.
-# More questions can be added chapter by chapter.
-QUESTION_BANK = {
-    ("Class XI", "Sets"): [
-        {
-            "question": "If A = {1, 2, 3} and B = {3, 4, 5}, what is A ∩ B?",
-            "options": ["{1, 2}", "{3}", "{4, 5}", "∅"],
-            "answer": 1,
-            "hint": "The intersection contains elements common to both sets.",
-            "explanation": "Only 3 belongs to both A and B, so A ∩ B = {3}.",
-            "difficulty": "Easy",
-            "marks": 1,
-        },
-        {
-            "question": "If A = {1, 2} and B = {2, 3}, how many elements are in A ∪ B?",
-            "options": ["2", "3", "4", "5"],
-            "answer": 1,
-            "hint": "The union contains each distinct element from both sets.",
-            "explanation": "A ∪ B = {1, 2, 3}, so it has 3 elements.",
-            "difficulty": "Easy",
-            "marks": 1,
-        },
-        {
-            "question": "If A = {1, 2, 3, 4} and B = {2, 4}, find A − B.",
-            "options": ["{2, 4}", "{1, 3}", "{1, 2, 3, 4}", "∅"],
-            "answer": 1,
-            "hint": "A − B contains the elements in A that are not in B.",
-            "explanation": "Removing 2 and 4 from A leaves {1, 3}.",
-            "difficulty": "Easy",
-            "marks": 1,
-        },
-        {
-            "question": "If a set has 3 elements, how many elements are in its power set?",
-            "options": ["3", "6", "8", "9"],
-            "answer": 2,
-            "hint": "A set with n elements has 2ⁿ subsets.",
-            "explanation": "The power set has 2³ = 8 elements.",
-            "difficulty": "Easy",
-            "marks": 1,
-        },
-        {
-            "question": "The universal set is U = {1, 2, 3, 4, 5}. If A = {2, 4}, find A′.",
-            "options": ["{2, 4}", "{1, 3, 5}", "{1, 2, 3, 4, 5}", "{3, 5}"],
-            "answer": 1,
-            "hint": "A′ contains the elements of U that are not in A.",
-            "explanation": "Removing 2 and 4 from U leaves {1, 3, 5}.",
-            "difficulty": "Easy",
-            "marks": 1,
-        },
-        {
-            "question": "If n(A) = 12, n(B) = 9, and n(A ∩ B) = 4, find n(A ∪ B).",
-            "options": ["17", "21", "25", "7"],
-            "answer": 0,
-            "hint": "Use n(A ∪ B) = n(A) + n(B) − n(A ∩ B).",
-            "explanation": "n(A ∪ B) = 12 + 9 − 4 = 17.",
-            "difficulty": "Analytical",
-            "marks": 2,
-        },
-        {
-            "question": "Which statement is always true for any set A?",
-            "options": ["A ∪ ∅ = ∅", "A ∩ ∅ = A", "A ∪ ∅ = A", "A − A = A"],
-            "answer": 2,
-            "hint": "The empty set contributes no elements to a union.",
-            "explanation": "Taking the union of A with the empty set leaves A unchanged.",
-            "difficulty": "Easy",
-            "marks": 1,
-        },
-        {
-            "question": "If A = {1, 2, 3} and B = {3, 4}, find A △ B, the symmetric difference.",
-            "options": ["{3}", "{1, 2, 4}", "{1, 2, 3, 4}", "∅"],
-            "answer": 1,
-            "hint": "The symmetric difference contains elements in exactly one of the sets.",
-            "explanation": "The common element 3 is excluded. The result is {1, 2, 4}.",
-            "difficulty": "Tricky",
-            "marks": 2,
-        },
-        {
-            "question": "If A ⊆ B and B ⊆ A, what can be concluded?",
-            "options": ["A ∩ B = ∅", "A = B", "A is a proper subset of B", "B = ∅"],
-            "answer": 1,
-            "hint": "Each set contains all the elements of the other.",
-            "explanation": "Mutual inclusion means the two sets have exactly the same elements.",
-            "difficulty": "Easy",
-            "marks": 1,
-        },
-        {
-            "question": "How many subsets does the empty set have?",
-            "options": ["0", "1", "2", "It depends on the universal set"],
-            "answer": 1,
-            "hint": "The empty set is a subset of every set, including itself.",
-            "explanation": "The only subset of ∅ is ∅ itself, so it has one subset.",
-            "difficulty": "Tricky",
-            "marks": 1,
-        },
-        {
-            "question": "If n(A) = 20, n(B) = 15, and n(A ∪ B) = 28, find n(A ∩ B).",
-            "options": ["5", "7", "13", "35"],
-            "answer": 1,
-            "hint": "Rearrange the formula for the number of elements in a union.",
-            "explanation": "n(A ∩ B) = 20 + 15 − 28 = 7.",
-            "difficulty": "Analytical",
-            "marks": 2,
-        },
-        {
-            "question": "Which identity is De Morgan's law for the complement of a union?",
-            "options": [
-                "(A ∪ B)′ = A′ ∪ B′",
-                "(A ∪ B)′ = A′ ∩ B′",
-                "(A ∩ B)′ = A′ ∩ B′",
-                "A ∪ A′ = ∅",
-            ],
-            "answer": 1,
-            "hint": "The complement switches union to intersection.",
-            "explanation": "De Morgan's law states that (A ∪ B)′ = A′ ∩ B′.",
-            "difficulty": "Tricky",
-            "marks": 1,
-        },
-        {
-            "question": "If A = {x : x is a positive integer less than 5}, which is A?",
-            "options": ["{0, 1, 2, 3, 4}", "{1, 2, 3, 4}", "{1, 2, 3, 4, 5}", "{2, 3, 4}"],
-            "answer": 1,
-            "hint": "Positive integers start at 1; include those less than 5.",
-            "explanation": "The positive integers less than 5 are 1, 2, 3, and 4.",
-            "difficulty": "Easy",
-            "marks": 1,
-        },
-        {
-            "question": "Let A = {1, 2, 3, 4} and B = {3, 4, 5}. What is A ∩ B?",
-            "options": ["{1, 2}", "{3, 4}", "{1, 2, 5}", "{1, 2, 3, 4, 5}"],
-            "answer": 1,
-            "hint": "Find the elements appearing in both sets.",
-            "explanation": "The common elements are 3 and 4.",
-            "difficulty": "Easy",
-            "marks": 1,
-        },
-        {
-            "question": "If n(A) = 8 and n(B) = 6, what is the greatest possible value of n(A ∩ B)?",
-            "options": ["0", "2", "6", "14"],
-            "answer": 2,
-            "hint": "The intersection cannot contain more elements than the smaller set.",
-            "explanation": "The greatest possible intersection is the size of the smaller set, 6.",
-            "difficulty": "Analytical",
-            "marks": 2,
-        },
-    ],
-
-    ("Class XI", "Relations and Functions"): [
-        {
-            "question": "If f(x) = 2x + 3, find f(4).",
-            "options": ["8", "11", "14", "5"],
-            "answer": 1,
-            "hint": "Substitute x = 4 into the function.",
-            "explanation": "f(4) = 2(4) + 3 = 11.",
-            "difficulty": "Easy",
-            "marks": 1,
-        },
-        {
-            "question": "What is the domain of f(x) = 1/(x − 2) over the real numbers?",
-            "options": [
-                "All real numbers",
-                "All real numbers except 0",
-                "All real numbers except 2",
-                "x > 2 only",
-            ],
-            "answer": 2,
-            "hint": "The denominator of a fraction cannot be zero.",
-            "explanation": "x − 2 must not equal zero, so x ≠ 2.",
-            "difficulty": "Easy",
-            "marks": 1,
-        },
-        {
-            "question": "If f(x) = x², what is f(−3)?",
-            "options": ["−9", "−6", "6", "9"],
-            "answer": 3,
-            "hint": "Square the input, including its sign.",
-            "explanation": "f(−3) = (−3)² = 9.",
-            "difficulty": "Easy",
-            "marks": 1,
-        },
-        {
-            "question": "If f(x) = 3x − 1, for what value of x is f(x) = 8?",
-            "options": ["2", "3", "4", "9"],
-            "answer": 1,
-            "hint": "Solve the equation 3x − 1 = 8.",
-            "explanation": "3x − 1 = 8 gives 3x = 9, so x = 3.",
-            "difficulty": "Analytical",
-            "marks": 2,
-        },
-        {
-            "question": "Which relation on a set A is called the identity relation?",
-            "options": [
-                "{(a, b) : a ≠ b}",
-                "{(a, a) : a ∈ A}",
-                "A × A",
-                "∅",
-            ],
-            "answer": 1,
-            "hint": "In the identity relation, each element is related to itself.",
-            "explanation": "The identity relation consists of all ordered pairs (a, a) for a in A.",
-            "difficulty": "Easy",
-            "marks": 1,
-        },
-    ],
-
-    ("Class XII", "Matrices"): [
-        {
-            "question": "Find the determinant of [[1, 2], [3, 4]].",
-            "options": ["−2", "2", "10", "−10"],
-            "answer": 0,
-            "hint": "For [[a, b], [c, d]], the determinant is ad − bc.",
-            "explanation": "(1 × 4) − (2 × 3) = 4 − 6 = −2.",
-            "difficulty": "Easy",
-            "marks": 1,
-        },
-        {
-            "question": "If A is a 2 × 3 matrix and B is a 3 × 4 matrix, what is the order of AB?",
-            "options": ["3 × 3", "2 × 4", "4 × 2", "2 × 3"],
-            "answer": 1,
-            "hint": "For a product, the outer dimensions give the order.",
-            "explanation": "A(2 × 3) multiplied by B(3 × 4) gives a 2 × 4 matrix.",
-            "difficulty": "Easy",
-            "marks": 1,
-        },
-        {
-            "question": "If A = [[1, 2], [3, 4]], what is the element in the second row and first column?",
-            "options": ["1", "2", "3", "4"],
-            "answer": 2,
-            "hint": "Read the row first, then the column.",
-            "explanation": "The element in row 2, column 1 is 3.",
-            "difficulty": "Easy",
-            "marks": 1,
-        },
-        {
-            "question": "If A is a 2 × 3 matrix, what is the order of its transpose Aᵀ?",
-            "options": ["2 × 3", "3 × 2", "2 × 2", "3 × 3"],
-            "answer": 1,
-            "hint": "The transpose swaps rows and columns.",
-            "explanation": "A 2 × 3 matrix becomes a 3 × 2 matrix when transposed.",
-            "difficulty": "Easy",
-            "marks": 1,
-        },
-    ],
-
-    ("Class XII", "Determinants"): [
-        {
-            "question": "Evaluate the determinant |1  2; 3  4|.",
-            "options": ["−2", "2", "10", "0"],
-            "answer": 0,
-            "hint": "For a 2 × 2 determinant, calculate ad − bc.",
-            "explanation": "(1 × 4) − (2 × 3) = −2.",
-            "difficulty": "Easy",
-            "marks": 1,
-        },
-        {
-            "question": "What is the value of the determinant |2  0; 0  5|?",
-            "options": ["7", "10", "0", "25"],
-            "answer": 1,
-            "hint": "For a diagonal 2 × 2 matrix, multiply the diagonal entries.",
-            "explanation": "(2 × 5) − (0 × 0) = 10.",
-            "difficulty": "Easy",
-            "marks": 1,
-        },
-        {
-            "question": "If two rows of a determinant are identical, what is its value?",
-            "options": ["1", "−1", "0", "It cannot be determined"],
-            "answer": 2,
-            "hint": "Consider what happens to a determinant when two rows are equal.",
-            "explanation": "A determinant with two identical rows has value 0.",
-            "difficulty": "Tricky",
-            "marks": 1,
-        },
-    ],
-}
-
 
 DIFFICULTIES = ["Easy", "Hard", "Tricky", "Analytical"]
 
-
-def normalize_question(question_text):
-    """Normalize text to help detect exact repeated questions."""
-    return re.sub(r"\W+", "", str(question_text).lower())
-
-
-def get_question_history():
-    """Keep question history in the current Streamlit session."""
-    if "question_history" not in st.session_state:
-        st.session_state.question_history = {}
-    return st.session_state.question_history
+CBSE_QUESTION_PAPER_URL = (
+    "https://www.cbse.gov.in/cbsenew/question-paper.html"
+)
+CBSE_ACADEMIC_URL = "https://cbseacademic.nic.in/"
 
 
-def generate_ai_questions(
+def get_openai_client():
+    """Create an OpenAI client using the key stored in Streamlit Secrets."""
+    try:
+        api_key = st.secrets["OPENAI_API_KEY"]
+    except Exception:
+        st.error(
+            "AI features need an API key. In Streamlit, open your app's "
+            "Settings → Secrets and add OPENAI_API_KEY."
+        )
+        return None
+
+    try:
+        return OpenAI(api_key=api_key)
+    except Exception as exc:
+        st.error(f"Could not initialize the AI service: {exc}")
+        return None
+
+
+def normalize_question(text):
+    """Normalize question text to help identify exact repeats."""
+    return re.sub(r"\W+", "", str(text).lower())
+
+
+def generate_keywords(subject, class_name, chapter):
+    """Generate and cache a short chapter glossary."""
+    cache_key = f"keywords|{subject}|{class_name}|{chapter}"
+
+    if cache_key in st.session_state:
+        return st.session_state[cache_key]
+
+    client = get_openai_client()
+    if client is None:
+        return []
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            response_format={"type": "json_object"},
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a careful CBSE study assistant. "
+                        "Return valid JSON only."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": f"""
+Create 8 important study keywords for:
+Subject: {subject}
+Class: {class_name}
+Chapter: {chapter}
+
+Return JSON in this format:
+{{
+  "keywords": [
+    {{"term": "keyword", "meaning": "short student-friendly meaning"}}
+  ]
+}}
+Keep meanings concise and appropriate to the specified class.
+Do not claim these are official CBSE definitions.
+""",
+                },
+            ],
+        )
+
+        data = json.loads(response.choices[0].message.content)
+        keywords = data.get("keywords", [])
+        st.session_state[cache_key] = keywords
+        return keywords
+
+    except Exception as exc:
+        st.error(f"Could not generate keywords. Please try again. Details: {exc}")
+        return []
+
+
+def generate_questions(
+    subject,
     class_name,
     chapter,
     difficulty,
     count,
     marks,
-    previously_seen_questions,
+    previously_seen,
 ):
-    """Generate original practice questions using Streamlit Secrets."""
-    try:
-        api_key = st.secrets["OPENAI_API_KEY"]
-    except Exception:
-        st.error(
-            "AI questions need an API key. In Streamlit, open your app's "
-            "Settings → Secrets and add OPENAI_API_KEY."
-        )
+    """Generate original subject-specific multiple-choice practice questions."""
+    client = get_openai_client()
+    if client is None:
         return []
 
-    try:
-        from openai import OpenAI
+    earlier_questions = previously_seen[-25:]
+    earlier_text = "\n".join(f"- {item}" for item in earlier_questions)
+    if not earlier_text:
+        earlier_text = "No earlier questions."
 
-        client = OpenAI(api_key=api_key)
+    prompt = f"""
+Create {count} original CBSE-style practice questions.
 
-        earlier_questions = previously_seen_questions[-25:]
-        earlier_text = "\n".join(f"- {question}" for question in earlier_questions)
-        if not earlier_text:
-            earlier_text = "No earlier questions."
-
-        prompt = f"""
-Create {count} original CBSE-style Mathematics practice questions.
-
+Subject: {subject}
 Class: {class_name}
 Chapter: {chapter}
 Difficulty: {difficulty}
 Marks per question: {marks}
 
-Do not repeat or closely paraphrase any of these questions:
+Avoid repeating or closely paraphrasing these earlier questions:
 {earlier_text}
 
 Return only valid JSON in this format:
@@ -396,14 +310,15 @@ Return only valid JSON in this format:
 }}
 
 Requirements:
-- Create exactly {count} questions if possible.
-- Every question must have exactly four options and one correct answer.
-- The answer must be the zero-based index of the correct option.
-- Make questions appropriate for the stated class and chapter.
-- Avoid repeating the earlier questions, including close paraphrases.
-- Do not claim these are official CBSE questions.
+- Make questions suitable for the stated subject, class, and chapter.
+- Create four options and exactly one correct answer per question.
+- The answer is the zero-based index of the correct option.
+- Avoid repeating or closely paraphrasing the earlier questions.
+- Do not claim the questions are official CBSE questions.
+- For numerical questions, ensure the answer and explanation are consistent.
 """
 
+    try:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             response_format={"type": "json_object"},
@@ -411,7 +326,7 @@ Requirements:
                 {
                     "role": "system",
                     "content": (
-                        "Create accurate educational Mathematics practice questions. "
+                        "Create accurate educational practice questions. "
                         "Return valid JSON only."
                     ),
                 },
@@ -419,13 +334,10 @@ Requirements:
             ],
         )
 
-        response_text = response.choices[0].message.content
-        data = json.loads(response_text)
-        questions = data.get("questions", [])
-
+        data = json.loads(response.choices[0].message.content)
         valid_questions = []
 
-        for question in questions:
+        for question in data.get("questions", []):
             options = question.get("options")
             answer = question.get("answer")
 
@@ -436,8 +348,8 @@ Requirements:
                 and isinstance(answer, int)
                 and 0 <= answer < 4
             ):
-                question["difficulty"] = difficulty
                 question["marks"] = marks
+                question["difficulty"] = difficulty
                 question.setdefault("hint", "Try identifying the key idea first.")
                 question.setdefault(
                     "explanation",
@@ -452,16 +364,28 @@ Requirements:
         return []
 
 
-st.title("📘 CBSE Study Hub")
-st.caption("Mathematics practice for Classes XI and XII")
+# App header with the custom logo.
+header_col1, header_col2 = st.columns([1, 5], vertical_alignment="center")
+with header_col1:
+    st.image(APP_ICON, width=72)
+with header_col2:
+    st.title("CBSE Study Hub")
+
+st.caption("Study and practice for Classes XI and XII")
 
 
 with st.sidebar:
-    st.header("Choose your chapter")
+    st.header("Choose your subject and chapter")
 
-    class_name = st.selectbox("Class", list(CHAPTERS.keys()))
-    chapter = st.selectbox("Chapter", CHAPTERS[class_name])
-
+    class_name = st.selectbox("Class", ["Class XI", "Class XII"])
+    subject = st.selectbox(
+        "Subject",
+        ["Mathematics", "Biology", "Chemistry", "Physics"],
+    )
+    chapter = st.selectbox(
+        "Chapter",
+        SUBJECT_CHAPTERS[subject][class_name],
+    )
     section = st.radio(
         "Section",
         ["Study keywords", "Quiz practice", "Board papers"],
@@ -469,26 +393,31 @@ with st.sidebar:
 
 
 if section == "Study keywords":
-    st.subheader(f"{class_name} Mathematics · {chapter}")
-    st.info(
-        "Verified chapter notes and keywords will be added here as the study "
-        "content is prepared."
-    )
-    st.markdown(
-        "**Study tip:** Write each definition in your own words, "
-        "then test yourself without looking."
+    st.subheader(f"{class_name} {subject} · {chapter}")
+    st.write("Generate a short glossary of important chapter terms.")
+
+    if st.button("Show chapter keywords"):
+        with st.spinner("Preparing keywords…"):
+            keywords = generate_keywords(subject, class_name, chapter)
+
+        if keywords:
+            for item in keywords:
+                if isinstance(item, dict):
+                    st.markdown(f"**{item.get('term', 'Keyword')}**")
+                    st.write(item.get("meaning", ""))
+                else:
+                    st.write(item)
+
+    st.caption(
+        "AI-generated definitions are study aids. Check them against your "
+        "textbook and the current CBSE syllabus."
     )
 
 
 elif section == "Quiz practice":
-    st.subheader(f"Quiz · {chapter}")
+    st.subheader(f"{class_name} {subject} · {chapter}")
 
     with st.form("quiz_settings"):
-        source = st.selectbox(
-            "Question source",
-            ["Curated bank", "AI-generated practice"],
-        )
-
         difficulty = st.selectbox("Difficulty", DIFFICULTIES)
         marks = st.selectbox("Marks per question", [1, 2, 3, 4, 5])
         number = st.slider(
@@ -498,156 +427,72 @@ elif section == "Quiz practice":
             value=3,
         )
         minutes = st.selectbox("Time limit (minutes)", [5, 10, 15, 20, 30])
-
         start_quiz = st.form_submit_button("Create quiz")
 
-    history = get_question_history()
-    history_key = f"{class_name}|{chapter}|{source}"
-    seen_questions = history.setdefault(history_key, [])
+    if "question_history" not in st.session_state:
+        st.session_state.question_history = {}
+
+    history_key = f"{subject}|{class_name}|{chapter}"
+    seen_questions = st.session_state.question_history.setdefault(history_key, [])
 
     if start_quiz:
-        # Clear the old displayed quiz while creating a new one.
-        st.session_state.quiz_context = None
+        # Hide the previous quiz while generating the next one.
         st.session_state.quiz_questions = []
+        st.session_state.quiz_context = None
 
-        seen_keys = {
-            normalize_question(text)
-            for text in seen_questions
-        }
+        with st.spinner("Creating practice questions…"):
+            generated = generate_questions(
+                subject=subject,
+                class_name=class_name,
+                chapter=chapter,
+                difficulty=difficulty,
+                count=number,
+                marks=marks,
+                previously_seen=seen_questions,
+            )
 
-        if source == "Curated bank":
-            available = QUESTION_BANK.get((class_name, chapter), [])
+        seen_keys = {normalize_question(text) for text in seen_questions}
+        quiz_keys = set()
+        unique_questions = []
 
-            matching_difficulty = [
-                question
-                for question in available
-                if question.get("difficulty") == difficulty
-            ]
+        for question in generated:
+            key = normalize_question(question["question"])
+            if key and key not in seen_keys and key not in quiz_keys:
+                unique_questions.append(question)
+                quiz_keys.add(key)
 
-            # If this chapter has no questions at the selected difficulty,
-            # use its other curated questions.
-            if matching_difficulty:
-                available = matching_difficulty
+        if unique_questions:
+            seen_questions.extend(q["question"] for q in unique_questions)
 
-            unseen_questions = [
-                question
-                for question in available
-                if normalize_question(question["question"]) not in seen_keys
-            ]
+            st.session_state.quiz_questions = unique_questions
+            st.session_state.quiz_context = (subject, class_name, chapter)
+            st.session_state.quiz_id = str(uuid.uuid4())
+            st.session_state.quiz_started = time.time()
+            st.session_state.quiz_minutes = minutes
+            st.session_state.quiz_submitted = False
 
-            if not unseen_questions:
-                if not available:
-                    st.warning(
-                        "There are no curated questions for this chapter yet. "
-                        "Choose AI-generated practice or use a chapter with "
-                        "curated questions."
-                    )
-                else:
-                    st.warning(
-                        "You have seen all the curated questions currently "
-                        "available for this chapter in this session."
-                    )
-            else:
-                selected_questions = random.sample(
-                    unseen_questions,
-                    min(number, len(unseen_questions)),
-                )
-
-                # Apply the selected marks setting to each selected question.
-                for question in selected_questions:
-                    question["marks"] = marks
-
-                seen_questions.extend(
-                    question["question"]
-                    for question in selected_questions
-                )
-
-                st.session_state.quiz_questions = selected_questions
-                st.session_state.quiz_context = (
-                    class_name,
-                    chapter,
-                    source,
-                )
-                st.session_state.quiz_id = str(uuid.uuid4())
-                st.session_state.quiz_started = time.time()
-                st.session_state.quiz_minutes = minutes
-                st.session_state.quiz_submitted = False
-
-                if len(selected_questions) < number:
-                    st.info(
-                        f"Only {len(selected_questions)} unseen curated "
-                        "question(s) are currently available."
-                    )
-
-        else:
-            with st.spinner("Creating practice questions…"):
-                generated_questions = generate_ai_questions(
-                    class_name=class_name,
-                    chapter=chapter,
-                    difficulty=difficulty,
-                    count=number,
-                    marks=marks,
-                    previously_seen_questions=seen_questions,
-                )
-
-            unique_questions = []
-            keys_in_this_quiz = set()
-
-            for question in generated_questions:
-                key = normalize_question(question["question"])
-
-                if (
-                    key
-                    and key not in seen_keys
-                    and key not in keys_in_this_quiz
-                ):
-                    unique_questions.append(question)
-                    keys_in_this_quiz.add(key)
-
-            if unique_questions:
-                seen_questions.extend(
-                    question["question"]
-                    for question in unique_questions
-                )
-
-                st.session_state.quiz_questions = unique_questions
-                st.session_state.quiz_context = (
-                    class_name,
-                    chapter,
-                    source,
-                )
-                st.session_state.quiz_id = str(uuid.uuid4())
-                st.session_state.quiz_started = time.time()
-                st.session_state.quiz_minutes = minutes
-                st.session_state.quiz_submitted = False
-
-                if len(unique_questions) < number:
-                    st.warning(
-                        f"Only {len(unique_questions)} new question(s) were "
-                        "available. Try creating another quiz."
-                    )
-
-            elif generated_questions:
+            if len(unique_questions) < number:
                 st.warning(
-                    "The generated questions matched questions already shown. "
-                    "Please create the quiz again."
+                    f"Only {len(unique_questions)} new question(s) were returned. "
+                    "Create another quiz to try again."
                 )
+        elif generated:
+            st.warning(
+                "The generated questions repeated questions already shown. "
+                "Please create the quiz again."
+            )
 
-    current_context = (class_name, chapter, source)
-    quiz_context = st.session_state.get("quiz_context")
+    current_context = (subject, class_name, chapter)
 
     if (
         st.session_state.get("quiz_questions")
-        and quiz_context == current_context
+        and st.session_state.get("quiz_context") == current_context
     ):
         questions = st.session_state.quiz_questions
         quiz_id = st.session_state.quiz_id
 
         elapsed = int(time.time() - st.session_state.quiz_started)
-        remaining = max(
-            0,
-            st.session_state.quiz_minutes * 60 - elapsed,
-        )
+        remaining = max(0, st.session_state.quiz_minutes * 60 - elapsed)
 
         st.caption(
             f"Time remaining when you submit: "
@@ -670,7 +515,9 @@ elif section == "Quiz practice":
                 choice = st.radio(
                     "Choose an answer",
                     options=list(range(len(question["options"]))),
-                    format_func=lambda option, options=question["options"]: options[option],
+                    format_func=lambda option, options=question["options"]: (
+                        options[option]
+                    ),
                     key=f"{quiz_id}_answer_{index}",
                     index=None,
                 )
@@ -685,9 +532,9 @@ elif section == "Quiz practice":
 
             for question, choice in zip(questions, chosen_answers):
                 if (
-                    choice is not None
+                    not timed_out
+                    and choice is not None
                     and choice == question["answer"]
-                    and not timed_out
                 ):
                     score += question.get("marks", marks)
 
@@ -698,29 +545,20 @@ elif section == "Quiz practice":
 
         if st.session_state.get("quiz_submitted"):
             if st.session_state.get("quiz_timed_out"):
-                st.warning(
-                    "Time expired before submission. Answers are shown for "
-                    "review, but no marks were awarded."
-                )
+                st.warning("Time expired. Answers are shown for review.")
 
             st.success(f"Score: {st.session_state.quiz_score} mark(s)")
 
             for index, (question, choice) in enumerate(
                 zip(questions, st.session_state.quiz_chosen)
             ):
-                correct_answer = question["answer"]
+                correct = question["answer"]
+                st.markdown(f"**Question {index + 1}:** {question['question']}")
 
-                st.markdown(
-                    f"**Question {index + 1}:** {question['question']}"
-                )
-
-                if choice == correct_answer:
+                if choice == correct:
                     st.write("✅ Correct")
                 else:
-                    st.write(
-                        f"❌ Correct answer: "
-                        f"{question['options'][correct_answer]}"
-                    )
+                    st.write(f"❌ Correct answer: {question['options'][correct]}")
 
                 st.write(question.get("explanation", ""))
 
@@ -728,24 +566,37 @@ elif section == "Quiz practice":
 elif section == "Board papers":
     st.subheader("Official CBSE question papers")
 
+    paper_years = list(range(2025, 2014, -1))
+    selected_year = st.selectbox("Choose examination year", paper_years)
+
     st.write(
-        "Open CBSE's official question-paper archive to look for original "
-        "papers by class, subject, and year."
+        f"Selected: **{selected_year} · {class_name} · {subject}**"
+    )
+    st.write(
+        "Open the official CBSE question-paper archive, then select the "
+        "matching year, class, and subject from the papers available there."
     )
 
     st.link_button(
-        "Open official CBSE question-paper archive",
-        "https://www.cbse.gov.in/cbsenew/question-paper.html",
+        f"Open CBSE question-paper archive for {selected_year}",
+        CBSE_QUESTION_PAPER_URL,
     )
 
+    st.write(
+        "For official sample papers and curriculum resources, use the "
+        "CBSE Academic website."
+    )
+    st.link_button("Open CBSE Academic", CBSE_ACADEMIC_URL)
+
     st.caption(
-        "Class XII has CBSE board examination papers. Class XI examinations "
-        "are generally set by individual schools."
+        "The year selector organizes your search, but CBSE controls which "
+        "papers are available in its archive. Class XI exams are generally "
+        "set by individual schools."
     )
 
 
 st.divider()
 st.caption(
-    "AI-generated questions are for practice, are not official CBSE questions, "
-    "and should be checked against the current syllabus and trusted materials."
+    "AI-generated questions and keywords are study aids, not official CBSE "
+    "content. Check them against the current syllabus and trusted textbooks."
 )
