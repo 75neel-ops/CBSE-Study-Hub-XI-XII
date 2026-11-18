@@ -408,27 +408,23 @@ with st.sidebar:
     )
 
     # Razorpay's hosted payment button.
-    components.html(
-        """
-        <div style="
-            text-align: left;
-            background: transparent;
-            padding: 0;
-            margin: 0;
-        ">
-          <form>
-            <script
-              src="https://checkout.razorpay.com/v1/payment-button.js"
-              data-payment_button_id="pl_Tvez6NOZsFJFmN"
-              async>
-            </script>
-          </form>
-        </div>
-        """,
-        height=65,
-        scrolling=False,
-    )
-
+   components.html(
+    """
+    <html>
+      <body style="margin:0; padding:0; overflow:hidden;">
+        <form>
+          <script
+            src="https://checkout.razorpay.com/v1/payment-button.js"
+            data-payment_button_id="pl_Tvez6NOZsFJFmN"
+            async>
+          </script>
+        </form>
+      </body>
+    </html>
+    """,
+    height=150,
+    scrolling=False,
+)
     st.caption("App owner: **NilanjanC**")
     st.divider()
 
