@@ -5,43 +5,46 @@ import time
 import uuid
 
 import streamlit as st
+import streamlit.components.v1 as components
 from openai import OpenAI
 from PIL import Image, ImageDraw
 
 
-# Create a custom icon image for the browser tab and app header.
+st.set_page_config(
+    page_title="CBSE Study Hub",
+    page_icon="📘",
+    layout="centered",
+)
+
+
 def make_app_icon():
+    """Create a simple logo for the app header."""
     image = Image.new("RGB", (256, 256), "#12345A")
     draw = ImageDraw.Draw(image)
 
-    # Book pages
     draw.polygon([(49, 72), (122, 90), (122, 190), (49, 171)], fill="#FFFFFF")
     draw.polygon([(134, 90), (207, 72), (207, 171), (134, 190)], fill="#EAF2F8")
-
-    # Book outline and centre
     draw.line([(122, 90), (122, 190)], fill="#12345A", width=7)
-    draw.line([(49, 72), (122, 90), (122, 190), (49, 171), (49, 72)],
-              fill="#F4B942", width=7)
-    draw.line([(134, 90), (207, 72), (207, 171), (134, 190), (134, 90)],
-              fill="#F4B942", width=7)
+    draw.line(
+        [(49, 72), (122, 90), (122, 190), (49, 171), (49, 72)],
+        fill="#F4B942",
+        width=7,
+    )
+    draw.line(
+        [(134, 90), (207, 72), (207, 171), (134, 190), (134, 90)],
+        fill="#F4B942",
+        width=7,
+    )
 
-    # Short text lines on the pages
     for y in (112, 133, 154):
         draw.line([(65, y), (108, y + 5)], fill="#8AA2B8", width=4)
         draw.line([(147, y + 5), (190, y)], fill="#8AA2B8", width=4)
 
-    # Small golden accent
     draw.ellipse((184, 35, 220, 71), fill="#F4B942")
     return image
 
 
 APP_ICON = make_app_icon()
-
-st.set_page_config(
-    page_title="CBSE Study Hub",
-    page_icon=APP_ICON,
-    layout="centered",
-)
 
 
 # Check the current CBSE syllabus before treating this chapter list as definitive.
@@ -364,7 +367,7 @@ Requirements:
         return []
 
 
-# App header with the custom logo.
+# App header and custom logo.
 header_col1, header_col2 = st.columns([1, 5], vertical_alignment="center")
 with header_col1:
     st.image(APP_ICON, width=72)
@@ -375,6 +378,60 @@ st.caption("Study and practice for Classes XI and XII")
 
 
 with st.sidebar:
+    # Subtle donation card at the top of the sidebar.
+    st.markdown(
+        """
+        <div style="
+            background: linear-gradient(135deg, #f4f8fc, #eef4f8);
+            border: 1px solid #d9e4ee;
+            border-radius: 12px;
+            padding: 12px 13px 8px 13px;
+            margin: 0 0 8px 0;
+        ">
+          <div style="
+              color: #173b5e;
+              font-size: 15px;
+              font-weight: 700;
+              margin-bottom: 5px;
+          ">Support CBSE Study Hub</div>
+          <div style="
+              color: #526579;
+              font-size: 12px;
+              line-height: 1.45;
+          ">
+            If this app has helped you, you’re welcome to contribute
+            any amount you choose. Your support is appreciated.
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Razorpay's hosted payment button.
+    components.html(
+        """
+        <div style="
+            text-align: left;
+            background: transparent;
+            padding: 0;
+            margin: 0;
+        ">
+          <form>
+            <script
+              src="https://checkout.razorpay.com/v1/payment-button.js"
+              data-payment_button_id="pl_Tvez6NOZsFJFmN"
+              async>
+            </script>
+          </form>
+        </div>
+        """,
+        height=65,
+        scrolling=False,
+    )
+
+    st.caption("App owner: **NilanjanC**")
+    st.divider()
+
     st.header("Choose your subject and chapter")
 
     class_name = st.selectbox("Class", ["Class XI", "Class XII"])
@@ -436,7 +493,6 @@ elif section == "Quiz practice":
     seen_questions = st.session_state.question_history.setdefault(history_key, [])
 
     if start_quiz:
-        # Hide the previous quiz while generating the next one.
         st.session_state.quiz_questions = []
         st.session_state.quiz_context = None
 
@@ -569,11 +625,9 @@ elif section == "Board papers":
     paper_years = list(range(2025, 2014, -1))
     selected_year = st.selectbox("Choose examination year", paper_years)
 
+    st.write(f"Selected: **{selected_year} · {class_name} · {subject}**")
     st.write(
-        f"Selected: **{selected_year} · {class_name} · {subject}**"
-    )
-    st.write(
-        "Open the official CBSE question-paper archive, then select the "
+        "Open the official CBSE question-paper archive, then choose the "
         "matching year, class, and subject from the papers available there."
     )
 
@@ -582,14 +636,11 @@ elif section == "Board papers":
         CBSE_QUESTION_PAPER_URL,
     )
 
-    st.write(
-        "For official sample papers and curriculum resources, use the "
-        "CBSE Academic website."
-    )
+    st.write("For official sample papers and curriculum resources:")
     st.link_button("Open CBSE Academic", CBSE_ACADEMIC_URL)
 
     st.caption(
-        "The year selector organizes your search, but CBSE controls which "
+        "The year selector helps organize your search, but CBSE controls which "
         "papers are available in its archive. Class XI exams are generally "
         "set by individual schools."
     )
@@ -600,3 +651,4 @@ st.caption(
     "AI-generated questions and keywords are study aids, not official CBSE "
     "content. Check them against the current syllabus and trusted textbooks."
 )
+st.caption("CBSE Study Hub · Owned by NilanjanC")
