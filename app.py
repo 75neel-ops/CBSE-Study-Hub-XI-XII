@@ -1,3 +1,4 @@
+import copy
 import json
 import random
 import re
@@ -14,7 +15,7 @@ st.set_page_config(
 )
 
 
-# Check the current CBSE syllabus before treating this chapter list as definitive.
+# Check the latest CBSE syllabus before treating this chapter list as definitive.
 CHAPTERS = {
     "Class XI": [
         "Sets",
@@ -50,7 +51,8 @@ CHAPTERS = {
 }
 
 
-# Starter examples only. Add more reviewed questions to expand the curated bank.
+# Original starter questions for Mathematics.
+# More questions can be added chapter by chapter.
 QUESTION_BANK = {
     ("Class XI", "Sets"): [
         {
@@ -72,6 +74,33 @@ QUESTION_BANK = {
             "marks": 1,
         },
         {
+            "question": "If A = {1, 2, 3, 4} and B = {2, 4}, find A − B.",
+            "options": ["{2, 4}", "{1, 3}", "{1, 2, 3, 4}", "∅"],
+            "answer": 1,
+            "hint": "A − B contains the elements in A that are not in B.",
+            "explanation": "Removing 2 and 4 from A leaves {1, 3}.",
+            "difficulty": "Easy",
+            "marks": 1,
+        },
+        {
+            "question": "If a set has 3 elements, how many elements are in its power set?",
+            "options": ["3", "6", "8", "9"],
+            "answer": 2,
+            "hint": "A set with n elements has 2ⁿ subsets.",
+            "explanation": "The power set has 2³ = 8 elements.",
+            "difficulty": "Easy",
+            "marks": 1,
+        },
+        {
+            "question": "The universal set is U = {1, 2, 3, 4, 5}. If A = {2, 4}, find A′.",
+            "options": ["{2, 4}", "{1, 3, 5}", "{1, 2, 3, 4, 5}", "{3, 5}"],
+            "answer": 1,
+            "hint": "A′ contains the elements of U that are not in A.",
+            "explanation": "Removing 2 and 4 from U leaves {1, 3, 5}.",
+            "difficulty": "Easy",
+            "marks": 1,
+        },
+        {
             "question": "If n(A) = 12, n(B) = 9, and n(A ∩ B) = 4, find n(A ∪ B).",
             "options": ["17", "21", "25", "7"],
             "answer": 0,
@@ -80,7 +109,94 @@ QUESTION_BANK = {
             "difficulty": "Analytical",
             "marks": 2,
         },
+        {
+            "question": "Which statement is always true for any set A?",
+            "options": ["A ∪ ∅ = ∅", "A ∩ ∅ = A", "A ∪ ∅ = A", "A − A = A"],
+            "answer": 2,
+            "hint": "The empty set contributes no elements to a union.",
+            "explanation": "Taking the union of A with the empty set leaves A unchanged.",
+            "difficulty": "Easy",
+            "marks": 1,
+        },
+        {
+            "question": "If A = {1, 2, 3} and B = {3, 4}, find A △ B, the symmetric difference.",
+            "options": ["{3}", "{1, 2, 4}", "{1, 2, 3, 4}", "∅"],
+            "answer": 1,
+            "hint": "The symmetric difference contains elements in exactly one of the sets.",
+            "explanation": "The common element 3 is excluded. The result is {1, 2, 4}.",
+            "difficulty": "Tricky",
+            "marks": 2,
+        },
+        {
+            "question": "If A ⊆ B and B ⊆ A, what can be concluded?",
+            "options": ["A ∩ B = ∅", "A = B", "A is a proper subset of B", "B = ∅"],
+            "answer": 1,
+            "hint": "Each set contains all the elements of the other.",
+            "explanation": "Mutual inclusion means the two sets have exactly the same elements.",
+            "difficulty": "Easy",
+            "marks": 1,
+        },
+        {
+            "question": "How many subsets does the empty set have?",
+            "options": ["0", "1", "2", "It depends on the universal set"],
+            "answer": 1,
+            "hint": "The empty set is a subset of every set, including itself.",
+            "explanation": "The only subset of ∅ is ∅ itself, so it has one subset.",
+            "difficulty": "Tricky",
+            "marks": 1,
+        },
+        {
+            "question": "If n(A) = 20, n(B) = 15, and n(A ∪ B) = 28, find n(A ∩ B).",
+            "options": ["5", "7", "13", "35"],
+            "answer": 1,
+            "hint": "Rearrange the formula for the number of elements in a union.",
+            "explanation": "n(A ∩ B) = 20 + 15 − 28 = 7.",
+            "difficulty": "Analytical",
+            "marks": 2,
+        },
+        {
+            "question": "Which identity is De Morgan's law for the complement of a union?",
+            "options": [
+                "(A ∪ B)′ = A′ ∪ B′",
+                "(A ∪ B)′ = A′ ∩ B′",
+                "(A ∩ B)′ = A′ ∩ B′",
+                "A ∪ A′ = ∅",
+            ],
+            "answer": 1,
+            "hint": "The complement switches union to intersection.",
+            "explanation": "De Morgan's law states that (A ∪ B)′ = A′ ∩ B′.",
+            "difficulty": "Tricky",
+            "marks": 1,
+        },
+        {
+            "question": "If A = {x : x is a positive integer less than 5}, which is A?",
+            "options": ["{0, 1, 2, 3, 4}", "{1, 2, 3, 4}", "{1, 2, 3, 4, 5}", "{2, 3, 4}"],
+            "answer": 1,
+            "hint": "Positive integers start at 1; include those less than 5.",
+            "explanation": "The positive integers less than 5 are 1, 2, 3, and 4.",
+            "difficulty": "Easy",
+            "marks": 1,
+        },
+        {
+            "question": "Let A = {1, 2, 3, 4} and B = {3, 4, 5}. What is A ∩ B?",
+            "options": ["{1, 2}", "{3, 4}", "{1, 2, 5}", "{1, 2, 3, 4, 5}"],
+            "answer": 1,
+            "hint": "Find the elements appearing in both sets.",
+            "explanation": "The common elements are 3 and 4.",
+            "difficulty": "Easy",
+            "marks": 1,
+        },
+        {
+            "question": "If n(A) = 8 and n(B) = 6, what is the greatest possible value of n(A ∩ B)?",
+            "options": ["0", "2", "6", "14"],
+            "answer": 2,
+            "hint": "The intersection cannot contain more elements than the smaller set.",
+            "explanation": "The greatest possible intersection is the size of the smaller set, 6.",
+            "difficulty": "Analytical",
+            "marks": 2,
+        },
     ],
+
     ("Class XI", "Relations and Functions"): [
         {
             "question": "If f(x) = 2x + 3, find f(4).",
@@ -105,14 +221,47 @@ QUESTION_BANK = {
             "difficulty": "Easy",
             "marks": 1,
         },
+        {
+            "question": "If f(x) = x², what is f(−3)?",
+            "options": ["−9", "−6", "6", "9"],
+            "answer": 3,
+            "hint": "Square the input, including its sign.",
+            "explanation": "f(−3) = (−3)² = 9.",
+            "difficulty": "Easy",
+            "marks": 1,
+        },
+        {
+            "question": "If f(x) = 3x − 1, for what value of x is f(x) = 8?",
+            "options": ["2", "3", "4", "9"],
+            "answer": 1,
+            "hint": "Solve the equation 3x − 1 = 8.",
+            "explanation": "3x − 1 = 8 gives 3x = 9, so x = 3.",
+            "difficulty": "Analytical",
+            "marks": 2,
+        },
+        {
+            "question": "Which relation on a set A is called the identity relation?",
+            "options": [
+                "{(a, b) : a ≠ b}",
+                "{(a, a) : a ∈ A}",
+                "A × A",
+                "∅",
+            ],
+            "answer": 1,
+            "hint": "In the identity relation, each element is related to itself.",
+            "explanation": "The identity relation consists of all ordered pairs (a, a) for a in A.",
+            "difficulty": "Easy",
+            "marks": 1,
+        },
     ],
+
     ("Class XII", "Matrices"): [
         {
             "question": "Find the determinant of [[1, 2], [3, 4]].",
-            "options": ["-2", "2", "10", "-10"],
+            "options": ["−2", "2", "10", "−10"],
             "answer": 0,
             "hint": "For [[a, b], [c, d]], the determinant is ad − bc.",
-            "explanation": "(1 × 4) − (2 × 3) = 4 − 6 = -2.",
+            "explanation": "(1 × 4) − (2 × 3) = 4 − 6 = −2.",
             "difficulty": "Easy",
             "marks": 1,
         },
@@ -120,20 +269,57 @@ QUESTION_BANK = {
             "question": "If A is a 2 × 3 matrix and B is a 3 × 4 matrix, what is the order of AB?",
             "options": ["3 × 3", "2 × 4", "4 × 2", "2 × 3"],
             "answer": 1,
-            "hint": "For matrix multiplication, the outer dimensions give the product's order.",
+            "hint": "For a product, the outer dimensions give the order.",
             "explanation": "A(2 × 3) multiplied by B(3 × 4) gives a 2 × 4 matrix.",
             "difficulty": "Easy",
             "marks": 1,
         },
+        {
+            "question": "If A = [[1, 2], [3, 4]], what is the element in the second row and first column?",
+            "options": ["1", "2", "3", "4"],
+            "answer": 2,
+            "hint": "Read the row first, then the column.",
+            "explanation": "The element in row 2, column 1 is 3.",
+            "difficulty": "Easy",
+            "marks": 1,
+        },
+        {
+            "question": "If A is a 2 × 3 matrix, what is the order of its transpose Aᵀ?",
+            "options": ["2 × 3", "3 × 2", "2 × 2", "3 × 3"],
+            "answer": 1,
+            "hint": "The transpose swaps rows and columns.",
+            "explanation": "A 2 × 3 matrix becomes a 3 × 2 matrix when transposed.",
+            "difficulty": "Easy",
+            "marks": 1,
+        },
     ],
+
     ("Class XII", "Determinants"): [
         {
             "question": "Evaluate the determinant |1  2; 3  4|.",
-            "options": ["-2", "2", "10", "0"],
+            "options": ["−2", "2", "10", "0"],
             "answer": 0,
             "hint": "For a 2 × 2 determinant, calculate ad − bc.",
-            "explanation": "(1 × 4) − (2 × 3) = -2.",
+            "explanation": "(1 × 4) − (2 × 3) = −2.",
             "difficulty": "Easy",
+            "marks": 1,
+        },
+        {
+            "question": "What is the value of the determinant |2  0; 0  5|?",
+            "options": ["7", "10", "0", "25"],
+            "answer": 1,
+            "hint": "For a diagonal 2 × 2 matrix, multiply the diagonal entries.",
+            "explanation": "(2 × 5) − (0 × 0) = 10.",
+            "difficulty": "Easy",
+            "marks": 1,
+        },
+        {
+            "question": "If two rows of a determinant are identical, what is its value?",
+            "options": ["1", "−1", "0", "It cannot be determined"],
+            "answer": 2,
+            "hint": "Consider what happens to a determinant when two rows are equal.",
+            "explanation": "A determinant with two identical rows has value 0.",
+            "difficulty": "Tricky",
             "marks": 1,
         },
     ],
@@ -144,12 +330,12 @@ DIFFICULTIES = ["Easy", "Hard", "Tricky", "Analytical"]
 
 
 def normalize_question(question_text):
-    """Normalize text to detect exact repeats despite punctuation or case changes."""
+    """Normalize text to help detect exact repeated questions."""
     return re.sub(r"\W+", "", str(question_text).lower())
 
 
 def get_question_history():
-    """Keep question history for the current browser/app session."""
+    """Keep question history in the current Streamlit session."""
     if "question_history" not in st.session_state:
         st.session_state.question_history = {}
     return st.session_state.question_history
@@ -163,7 +349,7 @@ def generate_ai_questions(
     marks,
     previously_seen_questions,
 ):
-    """Generate practice questions using the key stored in Streamlit Secrets."""
+    """Generate original practice questions using Streamlit Secrets."""
     try:
         api_key = st.secrets["OPENAI_API_KEY"]
     except Exception:
@@ -178,8 +364,8 @@ def generate_ai_questions(
 
         client = OpenAI(api_key=api_key)
 
-        earlier_questions = previously_seen_questions[-20:]
-        earlier_text = "\n".join(f"- {q}" for q in earlier_questions)
+        earlier_questions = previously_seen_questions[-25:]
+        earlier_text = "\n".join(f"- {question}" for question in earlier_questions)
         if not earlier_text:
             earlier_text = "No earlier questions."
 
@@ -225,7 +411,7 @@ Requirements:
                 {
                     "role": "system",
                     "content": (
-                        "Create accurate educational practice questions. "
+                        "Create accurate educational Mathematics practice questions. "
                         "Return valid JSON only."
                     ),
                 },
@@ -233,11 +419,12 @@ Requirements:
             ],
         )
 
-        data = json.loads(response.choices[0].message.content)
+        response_text = response.choices[0].message.content
+        data = json.loads(response_text)
         questions = data.get("questions", [])
 
-        # Check the response before displaying it.
         valid_questions = []
+
         for question in questions:
             options = question.get("options")
             answer = question.get("answer")
@@ -252,7 +439,10 @@ Requirements:
                 question["difficulty"] = difficulty
                 question["marks"] = marks
                 question.setdefault("hint", "Try identifying the key idea first.")
-                question.setdefault("explanation", "Review the relevant chapter concept.")
+                question.setdefault(
+                    "explanation",
+                    "Review the relevant chapter concept.",
+                )
                 valid_questions.append(question)
 
         return valid_questions
@@ -301,7 +491,12 @@ elif section == "Quiz practice":
 
         difficulty = st.selectbox("Difficulty", DIFFICULTIES)
         marks = st.selectbox("Marks per question", [1, 2, 3, 4, 5])
-        number = st.slider("Number of questions", min_value=1, max_value=10, value=3)
+        number = st.slider(
+            "Number of questions",
+            min_value=1,
+            max_value=10,
+            value=3,
+        )
         minutes = st.selectbox("Time limit (minutes)", [5, 10, 15, 20, 30])
 
         start_quiz = st.form_submit_button("Create quiz")
@@ -311,6 +506,10 @@ elif section == "Quiz practice":
     seen_questions = history.setdefault(history_key, [])
 
     if start_quiz:
+        # Clear the old displayed quiz while creating a new one.
+        st.session_state.quiz_context = None
+        st.session_state.quiz_questions = []
+
         seen_keys = {
             normalize_question(text)
             for text in seen_questions
@@ -320,31 +519,33 @@ elif section == "Quiz practice":
             available = QUESTION_BANK.get((class_name, chapter), [])
 
             matching_difficulty = [
-                q for q in available
-                if q.get("difficulty") == difficulty
+                question
+                for question in available
+                if question.get("difficulty") == difficulty
             ]
 
-            # If this difficulty has no questions, use the chapter's questions.
+            # If this chapter has no questions at the selected difficulty,
+            # use its other curated questions.
             if matching_difficulty:
                 available = matching_difficulty
 
             unseen_questions = [
-                q for q in available
-                if normalize_question(q["question"]) not in seen_keys
+                question
+                for question in available
+                if normalize_question(question["question"]) not in seen_keys
             ]
 
             if not unseen_questions:
                 if not available:
                     st.warning(
                         "There are no curated questions for this chapter yet. "
-                        "Choose AI-generated practice or add reviewed questions "
-                        "to the question bank."
+                        "Choose AI-generated practice or use a chapter with "
+                        "curated questions."
                     )
                 else:
                     st.warning(
                         "You have seen all the curated questions currently "
-                        "available for this chapter. More reviewed questions "
-                        "need to be added to the question bank."
+                        "available for this chapter in this session."
                     )
             else:
                 selected_questions = random.sample(
@@ -352,8 +553,13 @@ elif section == "Quiz practice":
                     min(number, len(unseen_questions)),
                 )
 
+                # Apply the selected marks setting to each selected question.
+                for question in selected_questions:
+                    question["marks"] = marks
+
                 seen_questions.extend(
-                    q["question"] for q in selected_questions
+                    question["question"]
+                    for question in selected_questions
                 )
 
                 st.session_state.quiz_questions = selected_questions
@@ -390,13 +596,18 @@ elif section == "Quiz practice":
             for question in generated_questions:
                 key = normalize_question(question["question"])
 
-                if key and key not in seen_keys and key not in keys_in_this_quiz:
+                if (
+                    key
+                    and key not in seen_keys
+                    and key not in keys_in_this_quiz
+                ):
                     unique_questions.append(question)
                     keys_in_this_quiz.add(key)
 
             if unique_questions:
                 seen_questions.extend(
-                    q["question"] for q in unique_questions
+                    question["question"]
+                    for question in unique_questions
                 )
 
                 st.session_state.quiz_questions = unique_questions
@@ -413,7 +624,7 @@ elif section == "Quiz practice":
                 if len(unique_questions) < number:
                     st.warning(
                         f"Only {len(unique_questions)} new question(s) were "
-                        "available. Create another quiz to try again."
+                        "available. Try creating another quiz."
                     )
 
             elif generated_questions:
@@ -425,7 +636,6 @@ elif section == "Quiz practice":
     current_context = (class_name, chapter, source)
     quiz_context = st.session_state.get("quiz_context")
 
-    # Show a quiz only while its selected class, chapter, and source match.
     if (
         st.session_state.get("quiz_questions")
         and quiz_context == current_context
@@ -447,9 +657,9 @@ elif section == "Quiz practice":
         with st.form(f"answer_quiz_{quiz_id}"):
             chosen_answers = []
 
-            for i, question in enumerate(questions):
+            for index, question in enumerate(questions):
                 st.markdown(
-                    f"**Question {i + 1} · "
+                    f"**Question {index + 1} · "
                     f"{question.get('marks', marks)} mark(s)**"
                 )
                 st.write(question["question"])
@@ -460,8 +670,8 @@ elif section == "Quiz practice":
                 choice = st.radio(
                     "Choose an answer",
                     options=list(range(len(question["options"]))),
-                    format_func=lambda n, options=question["options"]: options[n],
-                    key=f"{quiz_id}_answer_{i}",
+                    format_func=lambda option, options=question["options"]: options[option],
+                    key=f"{quiz_id}_answer_{index}",
                     index=None,
                 )
                 chosen_answers.append(choice)
@@ -489,21 +699,20 @@ elif section == "Quiz practice":
         if st.session_state.get("quiz_submitted"):
             if st.session_state.get("quiz_timed_out"):
                 st.warning(
-                    "Time expired before submission. Your answers are shown "
-                    "for review, but no marks were awarded."
+                    "Time expired before submission. Answers are shown for "
+                    "review, but no marks were awarded."
                 )
 
             st.success(f"Score: {st.session_state.quiz_score} mark(s)")
 
-            for i, (question, choice) in enumerate(
-                zip(
-                    questions,
-                    st.session_state.quiz_chosen,
-                )
+            for index, (question, choice) in enumerate(
+                zip(questions, st.session_state.quiz_chosen)
             ):
                 correct_answer = question["answer"]
 
-                st.markdown(f"**Question {i + 1}:** {question['question']}")
+                st.markdown(
+                    f"**Question {index + 1}:** {question['question']}"
+                )
 
                 if choice == correct_answer:
                     st.write("✅ Correct")
@@ -520,8 +729,8 @@ elif section == "Board papers":
     st.subheader("Official CBSE question papers")
 
     st.write(
-        "Use this link to open CBSE's official question-paper archive "
-        "and look for papers by class, subject, and year."
+        "Open CBSE's official question-paper archive to look for original "
+        "papers by class, subject, and year."
     )
 
     st.link_button(
@@ -538,5 +747,5 @@ elif section == "Board papers":
 st.divider()
 st.caption(
     "AI-generated questions are for practice, are not official CBSE questions, "
-    "and should be checked against the current syllabus and trusted study materials."
+    "and should be checked against the current syllabus and trusted materials."
 )
