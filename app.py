@@ -1,5 +1,4 @@
 import json
-import random
 import re
 import time
 import uuid
@@ -10,15 +9,12 @@ from openai import OpenAI
 from PIL import Image, ImageDraw
 
 
-st.set_page_config(
-    page_title="CBSE Study Hub",
-    page_icon="📘",
-    layout="centered",
-)
-
+# -------------------------------------------------------------------
+# Page settings and app icon
+# -------------------------------------------------------------------
 
 def make_app_icon():
-    """Create a simple logo for the app header."""
+    """Create a simple book logo for the app."""
     image = Image.new("RGB", (256, 256), "#12345A")
     draw = ImageDraw.Draw(image)
 
@@ -46,8 +42,18 @@ def make_app_icon():
 
 APP_ICON = make_app_icon()
 
+st.set_page_config(
+    page_title="CBSE Study Hub",
+    page_icon=APP_ICON,
+    layout="centered",
+)
 
-# Check the current CBSE syllabus before treating this chapter list as definitive.
+
+# -------------------------------------------------------------------
+# Chapters
+# Check the current CBSE syllabus before treating this list as definitive.
+# -------------------------------------------------------------------
+
 SUBJECT_CHAPTERS = {
     "Mathematics": {
         "Class XI": [
@@ -189,6 +195,48 @@ CBSE_QUESTION_PAPER_URL = (
 CBSE_ACADEMIC_URL = "https://cbseacademic.nic.in/"
 
 
+# -------------------------------------------------------------------
+# Razorpay donation popup
+# -------------------------------------------------------------------
+
+@st.dialog("Support CBSE Study Hub")
+def donation_dialog():
+    st.write(
+        "If CBSE Study Hub has helped you, you’re welcome to donate "
+        "any amount you choose. Your support is greatly appreciated."
+    )
+    st.caption("Payments are handled securely by Razorpay.")
+
+    # This is your Razorpay Payment Button ID.
+    # The larger frame gives the Razorpay form more room in the popup.
+    components.html(
+        """
+        <html>
+          <body style="
+            margin: 0;
+            padding: 8px;
+            font-family: Arial, sans-serif;
+            background: white;
+          ">
+            <form>
+              <script
+                src="https://checkout.razorpay.com/v1/payment-button.js"
+                data-payment_button_id="pl_Tvez6NOZsFJFmN"
+                async>
+              </script>
+            </form>
+          </body>
+        </html>
+        """,
+        height=600,
+        scrolling=True,
+    )
+
+
+# -------------------------------------------------------------------
+# OpenAI helpers
+# -------------------------------------------------------------------
+
 def get_openai_client():
     """Create an OpenAI client using the key stored in Streamlit Secrets."""
     try:
@@ -249,7 +297,7 @@ Return JSON in this format:
     {{"term": "keyword", "meaning": "short student-friendly meaning"}}
   ]
 }}
-Keep meanings concise and appropriate to the specified class.
+Keep meanings concise and suitable for the stated class.
 Do not claim these are official CBSE definitions.
 """,
                 },
@@ -275,15 +323,14 @@ def generate_questions(
     marks,
     previously_seen,
 ):
-    """Generate original subject-specific multiple-choice practice questions."""
+    """Generate original subject-specific multiple-choice questions."""
     client = get_openai_client()
     if client is None:
         return []
 
-    earlier_questions = previously_seen[-25:]
-    earlier_text = "\n".join(f"- {item}" for item in earlier_questions)
-    if not earlier_text:
-        earlier_text = "No earlier questions."
+    earlier_text = "\n".join(
+        f"- {item}" for item in previously_seen[-25:]
+    ) or "No earlier questions."
 
     prompt = f"""
 Create {count} original CBSE-style practice questions.
@@ -297,7 +344,7 @@ Marks per question: {marks}
 Avoid repeating or closely paraphrasing these earlier questions:
 {earlier_text}
 
-Return only valid JSON in this format:
+Return only valid JSON:
 {{
   "questions": [
     {{
@@ -314,10 +361,10 @@ Return only valid JSON in this format:
 
 Requirements:
 - Make questions suitable for the stated subject, class, and chapter.
-- Create four options and exactly one correct answer per question.
+- Give each question four options and exactly one correct answer.
 - The answer is the zero-based index of the correct option.
-- Avoid repeating or closely paraphrasing the earlier questions.
-- Do not claim the questions are official CBSE questions.
+- Avoid repeating or closely paraphrasing earlier questions.
+- Do not claim these are official CBSE questions.
 - For numerical questions, ensure the answer and explanation are consistent.
 """
 
@@ -367,26 +414,37 @@ Requirements:
         return []
 
 
-# App header and custom logo.
-header_col1, header_col2 = st.columns([1, 5], vertical_alignment="center")
+# -------------------------------------------------------------------
+# App header
+# -------------------------------------------------------------------
+
+header_col1, header_col2 = st.columns(
+    [1, 5],
+    vertical_alignment="center",
+)
+
 with header_col1:
     st.image(APP_ICON, width=72)
+
 with header_col2:
     st.title("CBSE Study Hub")
 
 st.caption("Study and practice for Classes XI and XII")
 
 
+# -------------------------------------------------------------------
+# Sidebar
+# -------------------------------------------------------------------
+
 with st.sidebar:
-    # Subtle donation card at the top of the sidebar.
     st.markdown(
         """
         <div style="
             background: linear-gradient(135deg, #f4f8fc, #eef4f8);
             border: 1px solid #d9e4ee;
             border-radius: 12px;
-            padding: 12px 13px 8px 13px;
-            margin: 0 0 8px 0;
+            padding: 12px 13px;
+            margin-bottom: 8px;
         ">
           <div style="
               color: #173b5e;
@@ -399,7 +457,7 @@ with st.sidebar:
               font-size: 12px;
               line-height: 1.45;
           ">
-            If this app has helped you, you’re welcome to contribute
+            If this app has helped you, you’re welcome to donate
             any amount you choose. Your support is appreciated.
           </div>
         </div>
@@ -407,25 +465,9 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    # Razorpay's hosted payment button.
-   # Razorpay's hosted payment button.
-    components.html(
-        """
-        <html>
-          <body style="margin:0; padding:0; overflow:hidden;">
-            <form>
-              <script
-                src="https://checkout.razorpay.com/v1/payment-button.js"
-                data-payment_button_id="pl_Tvez6NOZsFJFmN"
-                async>
-              </script>
-            </form>
-          </body>
-        </html>
-        """,
-        height=150,
-        scrolling=False,
-    )
+    if st.button("💛 Donate", use_container_width=True):
+        donation_dialog()
+
     st.caption("App owner: **NilanjanC**")
     st.divider()
 
@@ -445,6 +487,10 @@ with st.sidebar:
         ["Study keywords", "Quiz practice", "Board papers"],
     )
 
+
+# -------------------------------------------------------------------
+# Study keywords
+# -------------------------------------------------------------------
 
 if section == "Study keywords":
     st.subheader(f"{class_name} {subject} · {chapter}")
@@ -468,6 +514,10 @@ if section == "Study keywords":
     )
 
 
+# -------------------------------------------------------------------
+# AI quiz practice
+# -------------------------------------------------------------------
+
 elif section == "Quiz practice":
     st.subheader(f"{class_name} {subject} · {chapter}")
 
@@ -480,14 +530,20 @@ elif section == "Quiz practice":
             max_value=10,
             value=3,
         )
-        minutes = st.selectbox("Time limit (minutes)", [5, 10, 15, 20, 30])
+        minutes = st.selectbox(
+            "Time limit (minutes)",
+            [5, 10, 15, 20, 30],
+        )
         start_quiz = st.form_submit_button("Create quiz")
 
     if "question_history" not in st.session_state:
         st.session_state.question_history = {}
 
     history_key = f"{subject}|{class_name}|{chapter}"
-    seen_questions = st.session_state.question_history.setdefault(history_key, [])
+    seen_questions = st.session_state.question_history.setdefault(
+        history_key,
+        [],
+    )
 
     if start_quiz:
         st.session_state.quiz_questions = []
@@ -606,15 +662,23 @@ elif section == "Quiz practice":
                 zip(questions, st.session_state.quiz_chosen)
             ):
                 correct = question["answer"]
-                st.markdown(f"**Question {index + 1}:** {question['question']}")
+                st.markdown(
+                    f"**Question {index + 1}:** {question['question']}"
+                )
 
                 if choice == correct:
                     st.write("✅ Correct")
                 else:
-                    st.write(f"❌ Correct answer: {question['options'][correct]}")
+                    st.write(
+                        f"❌ Correct answer: {question['options'][correct]}"
+                    )
 
                 st.write(question.get("explanation", ""))
 
+
+# -------------------------------------------------------------------
+# Official CBSE question-paper links
+# -------------------------------------------------------------------
 
 elif section == "Board papers":
     st.subheader("Official CBSE question papers")
@@ -624,8 +688,8 @@ elif section == "Board papers":
 
     st.write(f"Selected: **{selected_year} · {class_name} · {subject}**")
     st.write(
-        "Open the official CBSE question-paper archive, then choose the "
-        "matching year, class, and subject from the papers available there."
+        "Open CBSE’s official question-paper archive and select the matching "
+        "year, class, and subject from the papers available there."
     )
 
     st.link_button(
@@ -633,7 +697,7 @@ elif section == "Board papers":
         CBSE_QUESTION_PAPER_URL,
     )
 
-    st.write("For official sample papers and curriculum resources:")
+    st.write("Official sample papers and curriculum resources:")
     st.link_button("Open CBSE Academic", CBSE_ACADEMIC_URL)
 
     st.caption(
@@ -642,6 +706,10 @@ elif section == "Board papers":
         "set by individual schools."
     )
 
+
+# -------------------------------------------------------------------
+# Footer
+# -------------------------------------------------------------------
 
 st.divider()
 st.caption(
